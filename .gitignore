@@ -1,0 +1,32 @@
+# --- Expo / React Native ---
+node_modules/
+.expo/
+dist/
+npm-debug.*
+yarn-error.*
+
+# --- Supabase / Deno ---
+.supabase/
+supabase/.temp/
+# No ignoramos deno.json porque es necesario para el despliegue
+
+# --- Python (FastF1 Script) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+# FastF1 crea una carpeta de cache para no descargar los datos mil veces
+fastf1_cache/ 
+
+# --- Variables de Entorno (¡MUY IMPORTANTE!) ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# --- Otros ---
+.DS_Store
+*.log
