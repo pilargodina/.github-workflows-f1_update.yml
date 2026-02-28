@@ -4,6 +4,8 @@ import HeaderF1 from '../../components/HeaderF1';
 import { F1_CALENDAR } from '../../constants/f1Calendar';
 import { TRACKS_DATA } from '../../constants/tracksData';
 import { useTheme } from '../../context/ThemeContext';
+import {TRACKSINFO} from '../../constants/tracksinfo';
+import { FLAGS_INFO } from '../../constants/flagsinfo';
 
 const { width } = Dimensions.get('window');
 
@@ -11,83 +13,26 @@ const { width } = Dimensions.get('window');
 // Ejemplo: "Saudi Arabia" -> "saudi_arabia"
 const formatFileName = (name: string) => name.toLowerCase().replace(/\s+/g, '_');
 
-// Mapeo manual de imágenes (necesario en React Native para archivos locales)
-const trackImages: { [key: string]: any } = {
-  australia: require('../../assets/images/tracks_info/australia.png'),
-  belgium: require('../../assets/images/tracks_info/belgium.png'),
-  bahrain: require('../../assets/images/tracks_info/bahrain.png'),
-  saudi_arabia: require('../../assets/images/tracks_info/saudi_arabia.png'),
-  china: require('../../assets/images/tracks_info/china.png'),
-  japan: require('../../assets/images/tracks_info/japan.png'),
-  italy: require('../../assets/images/tracks_info/italy.png'),
-  monaco: require('../../assets/images/tracks_info/monaco.png'),
-  canada: require('../../assets/images/tracks_info/canada.png'),
-  barcelona: require('../../assets/images/tracks_info/barcelona.png'),
-  austria: require('../../assets/images/tracks_info/austria.png'),
-  hungary: require('../../assets/images/tracks_info/hungary.png'),
-  netherlands: require('../../assets/images/tracks_info/netherlands.png'),
-  mexico: require('../../assets/images/tracks_info/mexico.png'),
-  brazil: require('../../assets/images/tracks_info/brazil.png'),
-  texas: require('../../assets/images/tracks_info/texas.png'),
-  singapore: require('../../assets/images/tracks_info/singapore.png'),
-  qatar: require('../../assets/images/tracks_info/qatar.png'),
-  abu_dhabi: require('../../assets/images/tracks_info/abu_dhabi.png'),
-  miami: require('../../assets/images/tracks_info/miami.png'),
-  great_britain: require('../../assets/images/tracks_info/great_britain.png'),
-  azerbaijan: require('../../assets/images/tracks_info/azerbaijan.png'),
-  las_vegas: require('../../assets/images/tracks_info/lasvegas.png'),
-  madrid: require('../../assets/images/tracks_info/madrid.png'),
-};
-
-const flagImages: { [key: string]: any } = {
-  australia: require('../../assets/images/flags/australia.png'),
-  belgium: require('../../assets/images/flags/belgium.png'),
-  bahrain: require('../../assets/images/flags/bahrain.png'),
-  saudi_arabia: require('../../assets/images/flags/saudi_arabia.png'),
-  china: require('../../assets/images/flags/china.png'),
-  japan: require('../../assets/images/flags/japan.png'),
-  italy: require('../../assets/images/flags/italy.png'),
-  monaco: require('../../assets/images/flags/monaco.png'),
-  canada: require('../../assets/images/flags/canada.png'),
-  barcelona: require('../../assets/images/flags/spain.png'), // Corregido a spain.png según tu carpeta
-  austria: require('../../assets/images/flags/austria.png'),
-  hungary: require('../../assets/images/flags/hungary.png'),
-  netherlands: require('../../assets/images/flags/netherlands.png'),
-  mexico: require('../../assets/images/flags/mexico.png'),
-  brazil: require('../../assets/images/flags/brazil.png'),
-  texas: require('../../assets/images/flags/usa.png'), // Ajustar si es usa.png
-  singapore: require('../../assets/images/flags/singapore.png'),
-  qatar: require('../../assets/images/flags/qatar.png'),
-  abu_dhabi: require('../../assets/images/flags/abu_dhabi.png'),
-  miami: require('../../assets/images/flags/usa.png'),
-  great_britain: require('../../assets/images/flags/great_britain.png'),
-  azerbaijan: require('../../assets/images/flags/azerbaijan.png'),
-  las_vegas: require('../../assets/images/flags/usa.png'),
-  madrid: require('../../assets/images/flags/spain.png'),
-};
-
 export default function DataScreen() {
   const { colors, isDarkMode } = useTheme();
-  const trackKeys = Object.keys(TRACKS_DATA);
+  
+  const trackKeys = React.useMemo(() => Object.keys(TRACKS_DATA), []);
   const [selectedKey, setSelectedKey] = useState(trackKeys[0]);
 
-  // Lógica para encontrar el GP actual al cargar
   useEffect(() => {
     const now = new Date();
-    // Buscamos en el calendario el primer GP cuya fecha de carrera no haya pasado
     const nextRace = F1_CALENDAR.find(race => new Date(race.raceDate) >= now);
-    
     if (nextRace) {
-      // Intentamos matchear el nombre del GP del calendario con la llave de TRACKS_DATA
-      // Nota: Asegúrate que los nombres en F1_CALENDAR coincidan con las llaves de TRACKS_DATA
       const match = trackKeys.find(key => key.toLowerCase().includes(nextRace.gp.toLowerCase()));
       if (match) setSelectedKey(match);
     }
-  }, []);
+  }, [trackKeys]);
 
-  const formatFileName = (name: string) => name.toLowerCase().replace(/\s+/g, '_');
   const trackInfo = TRACKS_DATA[selectedKey as keyof typeof TRACKS_DATA];
-  const fileKey = formatFileName(selectedKey);
+
+  // Buscamos el circuito seleccionado en TRACKSINFO para el mapa grande
+  const currentTrackData = TRACKSINFO.find(t => t.name.toLowerCase() === selectedKey.toLowerCase());
+  const circuitImage = currentTrackData ? currentTrackData.image : null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -95,20 +40,39 @@ export default function DataScreen() {
 
       <View style={[styles.selectorContainer, { borderBottomColor: colors.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {trackKeys.map((key) => {
-            const fKey = formatFileName(key);
+        {trackKeys.map((key) => {
+          const isSelected = selectedKey === key;
+
+          // Buscamos la bandera que coincida con la "key" (nombre del circuito)
+          const flagData = FLAGS_INFO.find(
+            (f) => f.name.toLowerCase() === key.toLowerCase()
+          );
+            // ----------------------------------
+
             return (
               <TouchableOpacity
                 key={key}
                 onPress={() => setSelectedKey(key)}
                 style={[
                   styles.trackChip,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                  selectedKey === key && styles.activeChip
+                  { 
+                    backgroundColor: colors.card, 
+                    borderColor: isSelected ? '#E10600' : colors.border 
+                  },
+                  isSelected && { borderWidth: 2 }
                 ]}
               >
-                <Image source={flagImages[fKey]} style={styles.flagIcon} />
-                <Text style={[styles.chipText, { color: colors.text }]}>{key.toUpperCase()}</Text>
+                {/* Renderizado de la bandera con fallback */}
+                {flagData ? (
+                  <Image source={flagData.image} style={styles.flagIcon} />
+                ) : (
+                  /* Opcional: un icono por defecto si no encuentra la bandera */
+                  <View style={[styles.flagIcon, { backgroundColor: '#ccc' }]} />
+                )}
+                
+                <Text style={[styles.chipText, { color: colors.text }]}>
+                  {key.toUpperCase()}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -117,18 +81,20 @@ export default function DataScreen() {
 
       <ScrollView style={styles.detailsContainer}>
         <View style={styles.mapContainer}>
-          <Image 
-            source={trackImages[fileKey]} 
-            style={styles.circuitMap} // Eliminado el tintColor para ver los colores reales
-            resizeMode="contain"
-          />
+          {circuitImage && (
+            <Image 
+              source={circuitImage} 
+              style={styles.circuitMap} 
+              resizeMode="contain"
+            />
+          )}
         </View>
 
         <View style={styles.statsGrid}>
           <StatBox label="First Grand Prix" value={trackInfo.firstGP} colors={colors} />
-          <StatBox label="Number of Laps" value={trackInfo.laps.toString()} colors={colors} />
-          <StatBox label="Circuit Length" value={trackInfo.length} colors={colors} />
-          <StatBox label="Lap Record" value={trackInfo.record} colors={colors} />
+          <StatBox label="Laps" value={trackInfo.laps.toString()} colors={colors} />
+          <StatBox label="Length" value={trackInfo.length} colors={colors} />
+          <StatBox label="Record" value={trackInfo.record} colors={colors} />
           <StatBox label="Difficulty" value={trackInfo.difficulty} colors={colors} />
         </View>
 

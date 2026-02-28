@@ -1,10 +1,10 @@
 import { Bell } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import HeaderF1 from '../../components/HeaderF1';
 import { F1_CALENDAR } from '../../constants/f1Calendar';
-// 1. Importamos el hook de tema
 import { useTheme } from '../../context/ThemeContext';
+import { supabase } from '@/lib/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -12,16 +12,17 @@ export default function HomeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedTrack, setSelectedTrack] = useState(F1_CALENDAR[0]);
   const [timeLeft, setTimeLeft] = useState("");
+  const [fastF1Data, setFastF1Data] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   
-  // 2. Extraemos colores y estado
   const { colors, isDarkMode } = useTheme();
 
+  // Timer (sin cambios)
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date().getTime();
       const deadline = new Date(selectedTrack.limit).getTime();
       const distance = deadline - now;
-
       if (distance < 0) {
         setTimeLeft("CLOSED");
       } else {
@@ -31,9 +32,38 @@ export default function HomeScreen() {
         setTimeLeft(`${days}d ${hours}h ${minutes}m`);
       }
     }, 1000);
-
     return () => clearInterval(timer);
   }, [selectedTrack]);
+
+  // MODIFICACIÓN TEMPORAL PARA PRUEBA HARDCODED
+  const fetchFastF1Results = async () => {
+    try {
+      setLoading(true);
+      
+      // FORZADO: Ignoramos el selectedTrack y buscamos Abu Dhabi 2025 directamente
+      const { data, error } = await supabase
+        .from('race_results')
+        .select('results')
+        .ilike('gp_name', '%Abu Dhabi%')
+        .eq('year', 2025)
+        .eq('session_type', 'Race')
+        .maybeSingle();
+
+      if (data && data.results) {
+        setFastF1Data(data.results);
+      } else {
+        setFastF1Data([]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFastF1Results();
+  }, [selectedTrack]); // Se ejecutará al cargar, pero siempre traerá Abu Dhabi
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -50,7 +80,6 @@ export default function HomeScreen() {
         <View style={styles.dot} />
       </TouchableOpacity>
       
-      {/* Selector de GP */}
       <View style={[styles.selectorContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {F1_CALENDAR.map((item) => (
@@ -72,9 +101,8 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
-      {/* Widget de Cuenta Regresiva */}
       <View style={[styles.countdownCard, { backgroundColor: isDarkMode ? '#1A1A1A' : '#333' }]}>
-        <Text style={styles.countdownLabel}>TIME UNTIL PREDICTIONS CLOSE</Text>
+        <Text style={styles.countdownLabel}>TIME UNTIL PREDICTIONS CLOSE (TEST MODE)</Text>
         <Text style={styles.countdownTime}>{timeLeft}</Text>
       </View>
 
@@ -88,9 +116,31 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
       >
         <View style={styles.page}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Último Resultado</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Resultados Abu Dhabi 2025 (Test)</Text>
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={styles.placeholder}>Datos de FastF1 para {selectedTrack.gp}...</Text>
+            {loading ? (
+              <ActivityIndicator color="#E10600" style={{ marginTop: 100 }} />
+            ) : fastF1Data.length > 0 ? (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {fastF1Data.map((item: any, index: number) => (
+                  <View key={index} style={styles.resultRow}>
+                    <Text style={styles.posText}>{item.pos || index + 1}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.driverName, { color: colors.text }]}>
+                        {item.name || item.Driver || "Unknown"}
+                      </Text>
+                      <Text style={styles.teamText}>
+                        {item.team || item.TeamName || "Unknown Team"}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.placeholder}>
+                No se encontraron datos en la tabla 'race_results' para Abu Dhabi 2025.
+              </Text>
+            )}
           </View>
         </View>
 
@@ -105,6 +155,7 @@ export default function HomeScreen() {
   );
 }
 
+// COMPONENTE PAGINATION RESTAURADO
 const Pagination = ({ currentIndex, isDarkMode }: { currentIndex: number, isDarkMode: boolean }) => (
   <View style={styles.paginationContainer}>
     {[0, 1].map((_, index) => (
@@ -134,10 +185,16 @@ const styles = StyleSheet.create({
   countdownTime: { color: '#E10600', fontFamily: 'F1-Regular', fontSize: 20 },
   page: { width: width, paddingHorizontal: 20 },
   sectionTitle: { fontFamily: 'F1-Bold', fontSize: 20, marginVertical: 15 },
-  card: { borderRadius: 15, height: 250, padding: 20, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
-  placeholder: { textAlign: 'center', marginTop: 80, color: '#999', fontFamily: 'F1-Regular' },
+  card: { borderRadius: 15, height: 350, padding: 20, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
+  placeholder: { textAlign: 'center', marginTop: 100, color: '#999', fontFamily: 'F1-Regular' },
   notificationBtn: { position: 'absolute', right: 20, top: 65, zIndex: 10 },
   dot: { position: 'absolute', top: -2, right: 0, width: 10, height: 10, backgroundColor: '#E10600', borderRadius: 5, borderWidth: 2, borderColor: 'white' },
   paginationContainer: { flexDirection: 'row', justifyContent: 'center', marginVertical: 10 },
-  circle: { height: 8, borderRadius: 4, marginHorizontal: 4 }
+  circle: { height: 8, borderRadius: 4, marginHorizontal: 4 },
+  
+  // Estilos de resultados
+  resultRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: '#eee' },
+  posText: { fontFamily: 'F1-Black', color: '#E10600', width: 30, fontSize: 16 },
+  driverName: { fontFamily: 'F1-Bold', fontSize: 14 },
+  teamText: { color: '#999', fontSize: 12, fontFamily: 'F1-Regular' },
 });

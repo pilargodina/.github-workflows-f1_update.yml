@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 // 1. Importamos TU ThemeProvider (el que creamos en context)
 import { ThemeProvider } from '../context/ThemeContext';
+import { VotingProvider } from '@/context/VotingContext';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -39,9 +40,11 @@ export default function RootLayout() {
 
   // Envolvemos toda la navegación con tu ThemeProvider personalizado
   return (
-    <ThemeProvider>
-      <RootLayoutNav />
-    </ThemeProvider>
+    <VotingProvider>
+      <ThemeProvider>
+        <RootLayoutNav />
+      </ThemeProvider>
+    </VotingProvider>
   );
 }
 
